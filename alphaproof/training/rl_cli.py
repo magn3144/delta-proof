@@ -49,7 +49,6 @@ def validate_config(config: Config) -> None:
         'inference_batch_size',
         'num_sampled_actions',
         'rollout_max_action_length',
-        'training_steps',
         'training_iterations',
         'checkpoint_interval',
         'theorem_validation_interval_games',
@@ -57,6 +56,8 @@ def validate_config(config: Config) -> None:
     for name in positive:
         if getattr(config, name) < 1:
             raise ValueError(f'{name} must be positive.')
+    if config.training_steps < 0:
+        raise ValueError('training_steps cannot be negative.')
     if config.lr <= 0:
         raise ValueError('lr must be positive.')
     if config.value_weight < 0:
