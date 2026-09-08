@@ -29,16 +29,16 @@ sft:
 rl:
   num_simulations: 64
   batch_size: 10
-  num_actors: 96
+  num_actors: 192
   num_games_per_actor: 500
-  max_concurrent_lean_imports: 16
+  max_concurrent_lean_imports: 32
   inference_num_gpus: 2
-  inference_batch_size: 32
+  inference_batch_size: 60
   inference_batch_timeout: 0.05
   num_sampled_actions: 6
   tactic_timeout: 1.0
   final_check_timeout: 300.0
-  seed: 0
+  seed: 3627237008774726163
   debug: false
   lr: 1.0e-5
   dtype: float32
@@ -54,13 +54,13 @@ rl:
   training_steps: 0
   training_iterations: 1
   checkpoint_interval: 250
-  window_size: 25000
+  window_size: 250000
   value_weight: 0.01
   validation_fraction: 0.05
   validation_batch_size: 10
-  validation_interval: 20
+  validation_interval: 100
   theorem_validation_interval_games: 2400
-  theorem_validation_num_theorems: 80
+  theorem_validation_num_theorems: 384
   log_interval: 10
   reward_window: 100
   wandb_project: alphaproof

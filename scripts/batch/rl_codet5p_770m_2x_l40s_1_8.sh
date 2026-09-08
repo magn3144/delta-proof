@@ -1,7 +1,7 @@
 #!/bin/sh
 #BSUB -q gpul40s
 #BSUB -J rl_codet5p_770m_2x_l40s_1_8_01
-#BSUB -n 32
+#BSUB -n 64
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=10GB]"
 #BSUB -gpu "num=2:mode=exclusive_process"
