@@ -1,3 +1,4 @@
+import os
 import secrets
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -153,7 +154,10 @@ class ExperimentConfig:
 
 
 def _resolve_path(value: str | Path) -> Path:
-    path = Path(value)
+    expanded = os.path.expandvars(str(value))
+    if '$' in expanded:
+        raise ValueError(f'Environment variable in {value!r} is not set')
+    path = Path(expanded).expanduser()
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
@@ -194,9 +198,9 @@ def load_experiment_config(
         values = yaml.safe_load(config_file)
     if not isinstance(values, dict):
         raise TypeError('Experiment YAML must contain a mapping.')
-    sections = cast(dict[str, Any], values)
+    sections = cast(dict[str, Any], values['deltaproof'])
     if set(sections) != {'sft', 'rl'}:
-        raise ValueError('Experiment YAML must contain exactly sft and rl sections.')
+        raise ValueError('The deltaproof section must contain exactly sft and rl sections.')
     if not isinstance(sections['sft'], dict) or not isinstance(
         sections['rl'], dict
     ):

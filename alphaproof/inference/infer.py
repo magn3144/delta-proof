@@ -33,7 +33,7 @@ def make_config(args: argparse.Namespace) -> Config:
     else:
         sft_config = sft_config_from_dict(saved_config)
         values = serializable_config(
-            load_experiment_config(DEFAULT_EXPERIMENT_PATH).rl
+            load_experiment_config(args.config).rl
         )
         values.update(
             {
@@ -101,10 +101,14 @@ def theorem_text(record: dict[str, Any]) -> str:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse paths and shared settings for JSONL inference."""
-    defaults = load_experiment_config(DEFAULT_EXPERIMENT_PATH).rl
+    config_parser = argparse.ArgumentParser(add_help=False)
+    config_parser.add_argument('--config', type=Path, default=DEFAULT_EXPERIMENT_PATH)
+    config_args, _ = config_parser.parse_known_args(argv)
+    defaults = load_experiment_config(config_args.config).rl
     default_run_dir = defaults.sft_run_dir
     parser = argparse.ArgumentParser(
-        description='Search for verified Lean proofs from a JSONL batch.'
+        description='Search for verified Lean proofs from a JSONL batch.',
+        parents=[config_parser],
     )
     parser.add_argument('--input', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
