@@ -114,6 +114,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--transitions-output', type=Path, required=True)
     parser.add_argument('--batch-id', required=True)
+    parser.add_argument('--report-progress', action='store_true')
     parser.add_argument(
         '--run-dir',
         type=Path,
@@ -247,7 +248,32 @@ def main() -> None:
         for record in records
     ]
     with ParallelSearchEngine(config, network, None) as engine:
-        search_results = engine.search(requests)
+        if args.report_progress:
+            pending = iter(requests)
+            for _ in requests[:config.num_actors]:
+                engine.submit(next(pending))
+            completed = {}
+            while engine.num_searches:
+                result = engine.next_result()
+                completed[result.request.request_id] = result
+                proof_lines = (
+                    extract_proof_script(result.game.root)
+                    if result.game.root is not None and result.game.root.is_optimal
+                    else None
+                )
+                status = 'rejected' if result.rejection is not None else (
+                    'proved' if proof_lines is not None else 'failed'
+                )
+                print('CONJECTURE_PROGRESS ' + json.dumps({
+                    'request_id': result.request.request_id,
+                    'status': status,
+                }), flush=True)
+                request = next(pending, None)
+                if request is not None:
+                    engine.submit(request)
+            search_results = [completed[request.request_id] for request in requests]
+        else:
+            search_results = engine.search(requests)
         inference_stats = engine.inference_stats
 
     print(
@@ -294,18 +320,16 @@ def main() -> None:
                 'simulations_used': len(game.timings.tactic_generations),
                 'transition_count': 0,
             }
-            transitions = (
-                extract_transitions(game.root)
-                if proof_lines is not None
-                else []
-            )
+            transitions = []
+            if proof_lines is not None:
+                assert game.root is not None
+                transitions = extract_transitions(game.root)
             result['transition_count'] = len(transitions)
             if args.include_trees:
-                result['tree'] = (
-                    None
-                    if search_result.rejection is not None
-                    else serialize_search_tree(game.root)
-                )
+                result['tree'] = None
+                if search_result.rejection is None:
+                    assert game.root is not None
+                    result['tree'] = serialize_search_tree(game.root)
             output_file.write(json.dumps(result) + '\n')
             for index, (state, action, value) in enumerate(transitions):
                 transition = {
