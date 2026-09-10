@@ -34,8 +34,6 @@ class SFTConfig:
     value_weight: float
     max_state_length: int
     max_action_length: int
-    rollout_max_action_length: int
-    num_sampled_actions: int
     num_value_bins: int
     max_grad_norm: float
     log_every: int

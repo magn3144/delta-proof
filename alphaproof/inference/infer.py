@@ -41,9 +41,6 @@ def make_config(args: argparse.Namespace) -> Config:
                 'sft_run_dir': str(args.run_dir),
                 'max_state_length': sft_config.max_state_length,
                 'max_action_length': sft_config.max_action_length,
-                'rollout_max_action_length': (
-                    sft_config.rollout_max_action_length
-                ),
                 'num_value_bins': sft_config.num_value_bins,
             }
         )

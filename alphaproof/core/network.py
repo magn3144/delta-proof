@@ -130,13 +130,11 @@ class Network(nn.Module):
         self.value_weight = config.value_weight
         self.max_state_length = config.max_state_length
         self.max_action_length = config.max_action_length
-        self.rollout_max_action_length = config.rollout_max_action_length
         self.mixed_precision = config.dtype == 'mixed'
         self.device: torch.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu'
         )
         self.tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_model)
-        self.num_sampled_actions = config.num_sampled_actions
         self.model = T5ForConditionalGeneration.from_pretrained(
             config.tokenizer_model
         )
@@ -156,18 +154,22 @@ class Network(nn.Module):
         self.to(device=self.device, dtype=TORCH_DTYPES[config.dtype])
         self.optimizer = torch.optim.Adam(self.parameters(), lr=config.lr)
 
-        primary_inference_model = _InferenceModel(
-            self.model,
-            self.value_head,
-            self.rollout_max_action_length,
-            self.num_sampled_actions,
-            self.mixed_precision,
-        )
-        self._inference_models = [primary_inference_model]
-        for gpu_index in range(1, inference_num_gpus):
-            self._inference_models.append(
-                copy.deepcopy(primary_inference_model).to(f'cuda:{gpu_index}')
+        self._inference_models = []
+        if isinstance(config, Config):
+            self.rollout_max_action_length = config.rollout_max_action_length
+            self.num_sampled_actions = config.num_sampled_actions
+            primary_inference_model = _InferenceModel(
+                self.model,
+                self.value_head,
+                self.rollout_max_action_length,
+                self.num_sampled_actions,
+                self.mixed_precision,
             )
+            self._inference_models = [primary_inference_model]
+            for gpu_index in range(1, inference_num_gpus):
+                self._inference_models.append(
+                    copy.deepcopy(primary_inference_model).to(f'cuda:{gpu_index}')
+                )
         self._inference_replicas_stale = False
 
     @property
@@ -311,6 +313,8 @@ class Network(nn.Module):
         """Return sampled tactics and value estimates for a state batch."""
         if not observations:
             return []
+        if not self._inference_models:
+            raise RuntimeError('Sampling requires an RL configuration.')
 
         self.eval()
         encoded = self.tokenizer(

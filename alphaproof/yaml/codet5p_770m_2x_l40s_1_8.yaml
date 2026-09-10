@@ -13,8 +13,6 @@ deltaproof:
     value_weight: 0.001
     max_state_length: 640
     max_action_length: 128
-    rollout_max_action_length: 32
-    num_sampled_actions: 6
     num_value_bins: 64
     max_grad_norm: 1.0
     log_every: 100

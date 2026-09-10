@@ -734,8 +734,6 @@ def validate_config(config: SFTConfig) -> None:
         'batch_size',
         'max_state_length',
         'max_action_length',
-        'rollout_max_action_length',
-        'num_sampled_actions',
         'num_value_bins',
         'log_every',
         'validation_interval',
