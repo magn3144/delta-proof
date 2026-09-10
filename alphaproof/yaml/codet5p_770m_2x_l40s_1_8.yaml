@@ -10,7 +10,7 @@ deltaproof:
     num_validation_pairs: null
     batch_size: 16
     learning_rate: 5.0e-5
-    value_weight: 0.001
+    value_weight: 0.01
     max_state_length: 640
     max_action_length: 128
     num_value_bins: 64
@@ -37,7 +37,7 @@ deltaproof:
     num_sampled_actions: 6
     tactic_timeout: 1.0
     final_check_timeout: 300.0
-    seed: 3627237008774726163
+    seed: 0
     debug: false
     lr: 1.0e-5
     dtype: float32
