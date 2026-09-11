@@ -3,9 +3,7 @@
 __pycache__/
 *.egg-info/
 .venv/
-models/
 .env
 runs/
 *.err
 *.out
-wandb

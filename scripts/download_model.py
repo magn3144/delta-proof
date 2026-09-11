@@ -4,7 +4,7 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 
 
-MODELS_DIR = Path(__file__).resolve().parent.parent / 'models'
+MODELS_DIR = Path(__file__).resolve().parent.parent / 'data' / 'models'
 MODEL_ALIASES = {
     'qwen3.6-27b': 'Qwen/Qwen3.6-27B',
     'qwen3.5-9b': 'Qwen/Qwen3.5-9B',

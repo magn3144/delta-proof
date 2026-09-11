@@ -3,7 +3,7 @@ deltaproof:
   sft:
     train_input: data/dataset/sft_1_8/train.jsonl
     validation_input: data/dataset/sft_1_8/validation.jsonl
-    model: models/Salesforce--codet5p-770m
+    model: data/models/Salesforce--codet5p-770m
     epochs: 1
     checkpoints_per_epoch: 1
     num_pairs: null
@@ -41,7 +41,7 @@ deltaproof:
     debug: false
     lr: 1.0e-5
     dtype: float32
-    tokenizer_model: models/Salesforce--codet5p-770m
+    tokenizer_model: data/models/Salesforce--codet5p-770m
     dataset_dir: data/dataset/numina_math_lean_passing_1_8
     sft_dataset_path: data/dataset/sft_1_8/train.jsonl
     sft_fraction: 0.1

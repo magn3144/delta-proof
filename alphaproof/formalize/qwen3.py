@@ -75,7 +75,7 @@ class Qwen3:
         if not self.model_dir.exists():
             raise FileNotFoundError(
                 f'Expected Qwen3 model at {self.model_dir}. '
-                f'Download {self.model_name} into models/ first.'
+                f'Download {self.model_name} into data/models/ first.'
             )
 
         self.tokenizer = AutoTokenizer.from_pretrained(

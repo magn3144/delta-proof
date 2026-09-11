@@ -38,7 +38,7 @@ class GoedelProver:
         if not self.model_dir.exists():
             raise FileNotFoundError(
                 f'Expected Goedel-Prover model at {self.model_dir}. '
-                f'Download {GOEDEL_PROVER_MODEL_NAME} into models/ first.'
+                f'Download {GOEDEL_PROVER_MODEL_NAME} into data/models/ first.'
             )
 
         self.tokenizer = AutoTokenizer.from_pretrained(
