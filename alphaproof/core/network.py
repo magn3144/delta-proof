@@ -391,8 +391,8 @@ class Network(nn.Module):
     ) -> float:
         """Apply one optimizer update from a replay batch."""
         self.train()
-        loss = self._loss_fn(batch)
         self.optimizer.zero_grad(set_to_none=True)
+        loss = self._loss_fn(batch)
         loss.backward()
         self.optimizer.step()
         self._inference_replicas_stale = True
