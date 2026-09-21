@@ -1,7 +1,6 @@
 import argparse
 import hashlib
 import json
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +15,11 @@ from alphaproof.training.run_config import (
     load_run_config,
     save_run_config,
 )
-from alphaproof.training.run_logger import RunLogger, initialize_wandb
+from alphaproof.training.run_logger import (
+    RunLogger,
+    initialize_stp_wandb,
+    load_stp_wandb_settings,
+)
 from alphaproof.training.shared_storage import SharedStorage
 from alphaproof.training.train import REPLAY_FILE, train_network
 
@@ -47,7 +50,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def prepare_run(
     config_path: Path,
     run_dir: Path,
-) -> tuple[Config, str, bool]:
+    wandb_run_id: str,
+) -> Config:
     """Create an external-transition run or restore its configuration."""
     resume = has_run_config(run_dir)
     if resume:
@@ -64,15 +68,15 @@ def prepare_run(
         if changed_fields:
             names = ', '.join(changed_fields)
             raise ValueError(f'Configuration differs for: {names}.')
-        wandb_run_id = str(saved['wandb_run_id'])
+        if saved['wandb_run_id'] != wandb_run_id:
+            raise ValueError('The saved W&B run ID differs from the STP run ID.')
     else:
         config = load_experiment_config(config_path, run_dir.name).rl
         validate_config(config)
         validate_config_paths(config)
         run_dir.mkdir(parents=True, exist_ok=True)
-        wandb_run_id = uuid.uuid4().hex
         save_run_config(run_dir, config, wandb_run_id)
-    return config, wandb_run_id, resume
+    return config
 
 
 def sha256(path: Path) -> str:
@@ -201,7 +205,13 @@ def main() -> None:
     """Train AlphaProof from one external transition file."""
     args = parse_args()
     run_dir = args.run_dir.resolve()
-    config, wandb_run_id, resume = prepare_run(args.config.resolve(), run_dir)
+    config_path = args.config.resolve()
+    wandb_settings = load_stp_wandb_settings(config_path, run_dir)
+    config = prepare_run(
+        config_path,
+        run_dir,
+        wandb_settings['id'],
+    )
     batches = load_batches(run_dir / BATCHES_FILE)
     batch = batches.get(args.batch_id)
     if batch is not None and batch['complete']:
@@ -215,13 +225,7 @@ def main() -> None:
     logger = RunLogger(
         run_dir,
         config.reward_window,
-        initialize_wandb(
-            run_dir.name,
-            run_dir,
-            resume,
-            wandb_run_id,
-            config,
-        ),
+        initialize_stp_wandb(wandb_settings, config),
     )
     try:
         train_batch(args, config, run_dir, logger)

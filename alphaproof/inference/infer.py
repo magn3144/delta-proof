@@ -24,6 +24,16 @@ from alphaproof.training.run_config import load_run_config
 from leantree import LeanProject
 
 
+class InferenceMetrics:
+    """Collect inference-batch measurements without affecting search."""
+
+    def __init__(self) -> None:
+        self.batch_sizes: list[int] = []
+
+    def log_inference_batch(self, batch_size: int) -> None:
+        self.batch_sizes.append(batch_size)
+
+
 def make_config(args: argparse.Namespace) -> Config:
     """Build search configuration for an SFT or RL run."""
     run_data = load_run_config(args.run_dir)
@@ -244,7 +254,9 @@ def main() -> None:
         )
         for record in records
     ]
-    with ParallelSearchEngine(config, network, None) as engine:
+    inference_metrics = InferenceMetrics()
+    completion_order = {}
+    with ParallelSearchEngine(config, network, inference_metrics) as engine:
         if args.report_progress:
             pending = iter(requests)
             for _ in requests[:config.num_actors]:
@@ -253,6 +265,7 @@ def main() -> None:
             while engine.num_searches:
                 result = engine.next_result()
                 completed[result.request.request_id] = result
+                completion_order[result.request.request_id] = len(completion_order)
                 proof_lines = (
                     extract_proof_script(result.game.root)
                     if result.game.root is not None and result.game.root.is_optimal
@@ -271,6 +284,10 @@ def main() -> None:
             search_results = [completed[request.request_id] for request in requests]
         else:
             search_results = engine.search(requests)
+            completion_order = {
+                result.request.request_id: index
+                for index, result in enumerate(search_results)
+            }
         inference_stats = engine.inference_stats
 
     print(
@@ -302,6 +319,7 @@ def main() -> None:
             )
             result = {
                 'request_id': request_id,
+                'completion_index': completion_order[request_id],
                 'theorem_id': str(request_record['theorem_id']),
                 'source': str(request_record['source']),
                 'attempt': int(request_record['attempt']),
@@ -312,7 +330,11 @@ def main() -> None:
                     else None
                 ),
                 'error': game.error,
+                'episode_reward': (
+                    int(game.root.value_target) if proof_lines is not None else None
+                ),
                 'duration_seconds': search_result.duration_seconds,
+                'timings': game.timings.record(),
                 'simulations_allocated': game.num_simulations,
                 'simulations_used': len(game.timings.tactic_generations),
                 'transition_count': 0,
@@ -344,6 +366,19 @@ def main() -> None:
                 transitions_file.write(json.dumps(transition) + '\n')
     output_temporary.replace(args.output)
     transitions_temporary.replace(args.transitions_output)
+    metrics_path = args.output.with_name(args.output.stem + '_metrics.json')
+    metrics_temporary = metrics_path.with_suffix(metrics_path.suffix + '.tmp')
+    with metrics_temporary.open('w', encoding='utf-8') as metrics_file:
+        json.dump({
+            'batch_sizes': inference_metrics.batch_sizes,
+            'batch_count': inference_stats.batch_count,
+            'request_count': inference_stats.request_count,
+            'average_batch_size': inference_stats.average_batch_size,
+            'queue_wait_seconds': inference_stats.queue_wait_seconds,
+            'model_seconds': inference_stats.model_seconds,
+        }, metrics_file, indent=2)
+        metrics_file.write('\n')
+    metrics_temporary.replace(metrics_path)
 
 
 if __name__ == '__main__':

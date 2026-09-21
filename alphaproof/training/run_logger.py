@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import wandb
+import yaml
 
 from alphaproof.core.config import Config, serializable_config
 from alphaproof.core.game import Game
@@ -19,6 +20,38 @@ from alphaproof.training.run_diagnostics import RunDiagnostics
 RESULTS_FILE = 'results.jsonl'
 TIMINGS_FILE = 'timings.jsonl'
 VALIDATION_RESULTS_FILE = 'validation_results.jsonl'
+
+
+def load_stp_wandb_settings(config_path: Path, run_dir: Path) -> dict[str, Any]:
+    """Load the shared STP W&B run settings from the experiment YAML."""
+    with config_path.open(encoding='utf-8') as config_file:
+        values = yaml.safe_load(config_file)
+    tracker = values['training']['trainer']['tracker']
+    experiment_dir = run_dir.parent
+    run_id = (experiment_dir / 'conjecturer_wandb_id.txt').read_text(
+        encoding='utf-8'
+    ).strip()
+    return {
+        'entity': tracker['entity'],
+        'project': tracker['project'],
+        'name': tracker['name'] + '-conjecturer-metrics',
+        'tags': tracker['tags'],
+        'id': run_id,
+        'dir': experiment_dir,
+    }
+
+
+def define_metrics(wandb_run: Any) -> None:
+    """Configure metric axes shared by all AlphaProof W&B runs."""
+    wandb_run.define_metric('actor/game')
+    wandb_run.define_metric('actor/*', step_metric='actor/game')
+    wandb_run.define_metric('learner/step')
+    wandb_run.define_metric('train/*', step_metric='learner/step')
+    wandb_run.define_metric('replay_validation/*', step_metric='learner/step')
+    wandb_run.define_metric('validation/game')
+    wandb_run.define_metric('validation/*', step_metric='validation/game')
+    wandb_run.define_metric('inference/*')
+    wandb_run.define_metric('resources/*')
 
 
 def initialize_wandb(
@@ -44,15 +77,31 @@ def initialize_wandb(
             finish_timeout_raises=True,
         ),
     )
-    wandb_run.define_metric('actor/game')
-    wandb_run.define_metric('actor/*', step_metric='actor/game')
-    wandb_run.define_metric('learner/step')
-    wandb_run.define_metric('train/*', step_metric='learner/step')
-    wandb_run.define_metric('replay_validation/*', step_metric='learner/step')
-    wandb_run.define_metric('validation/game')
-    wandb_run.define_metric('validation/*', step_metric='validation/game')
-    wandb_run.define_metric('inference/*')
-    wandb_run.define_metric('resources/*')
+    define_metrics(wandb_run)
+    return wandb_run
+
+
+def initialize_stp_wandb(
+    settings: dict[str, Any],
+    config: Config,
+) -> Any:
+    """Resume the W&B run owned by the surrounding STP experiment."""
+    wandb_run: Any = wandb.init(
+        project=settings['project'],
+        entity=settings['entity'],
+        name=settings['name'],
+        id=settings['id'],
+        tags=settings['tags'],
+        mode=config.wandb_mode,
+        dir=settings['dir'],
+        resume='must',
+        config=serializable_config(config),
+        settings=wandb.Settings(
+            finish_timeout=60.0,
+            finish_timeout_raises=True,
+        ),
+    )
+    define_metrics(wandb_run)
     return wandb_run
 
 
