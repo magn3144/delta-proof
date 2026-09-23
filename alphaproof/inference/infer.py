@@ -1,5 +1,7 @@
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -118,10 +120,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parents=[config_parser],
     )
     parser.add_argument('--input', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--transitions-output', type=Path, required=True)
     parser.add_argument('--batch-id', required=True)
-    parser.add_argument('--report-progress', action='store_true')
     parser.add_argument(
         '--run-dir',
         type=Path,
@@ -218,7 +217,70 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def main() -> None:
+def serialize_result(search_result, request_record, completion_index, args):
+    game = search_result.game
+    request_id = search_result.request.request_id
+    proof_lines = (
+        extract_proof_script(game.root)
+        if game.root is not None and game.root.is_optimal
+        else None
+    )
+    status = 'rejected' if search_result.rejection is not None else (
+        'proved' if proof_lines is not None else 'failed'
+    )
+    result = {
+        'type': 'result',
+        'request': request_record,
+        'request_id': request_id,
+        'completion_index': completion_index,
+        'theorem_id': str(request_record['theorem_id']),
+        'source': str(request_record['source']),
+        'attempt': int(request_record['attempt']),
+        'status': status,
+        'proof': (
+            '\n'.join(proof_lines)
+            if proof_lines is not None
+            else None
+        ),
+        'error': game.error,
+        'episode_reward': (
+            int(game.root.value_target) if proof_lines is not None else None
+        ),
+        'duration_seconds': search_result.duration_seconds,
+        'timings': game.timings.record(),
+        'simulations_allocated': game.num_simulations,
+        'simulations_used': len(game.timings.tactic_generations),
+        'transition_count': 0,
+    }
+    transitions = []
+    if proof_lines is not None:
+        assert game.root is not None
+        transitions = extract_transitions(game.root)
+    result['transition_count'] = len(transitions)
+    if args.include_trees:
+        result['tree'] = None
+        if search_result.rejection is None:
+            assert game.root is not None
+            result['tree'] = serialize_search_tree(game.root)
+    result['transitions'] = []
+    for index, (state, action, value) in enumerate(transitions):
+        transition = {
+            'transition_id': f'{request_id}:{index}',
+            'batch_id': args.batch_id,
+            'request_id': request_id,
+            'theorem_id': str(request_record['theorem_id']),
+            'source': str(request_record['source']),
+            'attempt': int(request_record['attempt']),
+            'index': index,
+            'state': str(state),
+            'action': str(action),
+            'value': value,
+        }
+        result['transitions'].append(transition)
+    return result
+
+
+def run_inference(protocol):
     """Load one network and search a JSONL request batch in parallel."""
     args = parse_args()
     seed_everything(args.seed)
@@ -255,130 +317,47 @@ def main() -> None:
         for record in records
     ]
     inference_metrics = InferenceMetrics()
-    completion_order = {}
+    previous_stats = dict.fromkeys(
+        ('batch_count', 'request_count', 'queue_wait_seconds', 'model_seconds'), 0,
+    )
     with ParallelSearchEngine(config, network, inference_metrics) as engine:
-        if args.report_progress:
-            pending = iter(requests)
-            for _ in requests[:config.num_actors]:
-                engine.submit(next(pending))
-            completed = {}
-            while engine.num_searches:
-                result = engine.next_result()
-                completed[result.request.request_id] = result
-                completion_order[result.request.request_id] = len(completion_order)
-                proof_lines = (
-                    extract_proof_script(result.game.root)
-                    if result.game.root is not None and result.game.root.is_optimal
-                    else None
-                )
-                status = 'rejected' if result.rejection is not None else (
-                    'proved' if proof_lines is not None else 'failed'
-                )
-                print('CONJECTURE_PROGRESS ' + json.dumps({
-                    'request_id': result.request.request_id,
-                    'status': status,
-                }), flush=True)
-                request = next(pending, None)
-                if request is not None:
-                    engine.submit(request)
-            search_results = [completed[request.request_id] for request in requests]
-        else:
-            search_results = engine.search(requests)
-            completion_order = {
-                result.request.request_id: index
-                for index, result in enumerate(search_results)
-            }
-        inference_stats = engine.inference_stats
-
-    print(
-        f'Inference: {inference_stats.batch_count} batches, average size '
-        f'{inference_stats.average_batch_size:.2f}, model time '
-        f'{inference_stats.model_seconds:.1f}s.',
-        flush=True,
-    )
-
-    output_temporary = args.output.with_suffix(args.output.suffix + '.tmp')
-    transitions_temporary = args.transitions_output.with_suffix(
-        args.transitions_output.suffix + '.tmp'
-    )
-    with (
-        output_temporary.open('w', encoding='utf-8') as output_file,
-        transitions_temporary.open('w', encoding='utf-8') as transitions_file,
-    ):
-        for search_result in search_results:
-            game = search_result.game
-            request_id = search_result.request.request_id
-            request_record = records_by_request[request_id]
-            proof_lines = (
-                extract_proof_script(game.root)
-                if game.root is not None and game.root.is_optimal
-                else None
+        pending = iter(requests)
+        for _ in requests[:config.num_actors]:
+            engine.submit(next(pending))
+        completion_index = 0
+        while engine.num_searches:
+            search_result = engine.next_result()
+            event = serialize_result(
+                search_result, records_by_request[search_result.request.request_id],
+                completion_index, args,
             )
-            status = 'rejected' if search_result.rejection is not None else (
-                'proved' if proof_lines is not None else 'failed'
-            )
-            result = {
-                'request_id': request_id,
-                'completion_index': completion_order[request_id],
-                'theorem_id': str(request_record['theorem_id']),
-                'source': str(request_record['source']),
-                'attempt': int(request_record['attempt']),
-                'status': status,
-                'proof': (
-                    '\n'.join(proof_lines)
-                    if proof_lines is not None
-                    else None
-                ),
-                'error': game.error,
-                'episode_reward': (
-                    int(game.root.value_target) if proof_lines is not None else None
-                ),
-                'duration_seconds': search_result.duration_seconds,
-                'timings': game.timings.record(),
-                'simulations_allocated': game.num_simulations,
-                'simulations_used': len(game.timings.tactic_generations),
-                'transition_count': 0,
+            stats = vars(engine.inference_stats)
+            event['inference'] = {
+                key: stats[key] - previous_stats[key] for key in previous_stats
             }
-            transitions = []
-            if proof_lines is not None:
-                assert game.root is not None
-                transitions = extract_transitions(game.root)
-            result['transition_count'] = len(transitions)
-            if args.include_trees:
-                result['tree'] = None
-                if search_result.rejection is None:
-                    assert game.root is not None
-                    result['tree'] = serialize_search_tree(game.root)
-            output_file.write(json.dumps(result) + '\n')
-            for index, (state, action, value) in enumerate(transitions):
-                transition = {
-                    'transition_id': f'{request_id}:{index}',
-                    'batch_id': args.batch_id,
-                    'request_id': request_id,
-                    'theorem_id': str(request_record['theorem_id']),
-                    'source': str(request_record['source']),
-                    'attempt': int(request_record['attempt']),
-                    'index': index,
-                    'state': str(state),
-                    'action': str(action),
-                    'value': value,
-                }
-                transitions_file.write(json.dumps(transition) + '\n')
-    output_temporary.replace(args.output)
-    transitions_temporary.replace(args.transitions_output)
-    metrics_path = args.output.with_name(args.output.stem + '_metrics.json')
-    metrics_temporary = metrics_path.with_suffix(metrics_path.suffix + '.tmp')
-    with metrics_temporary.open('w', encoding='utf-8') as metrics_file:
-        json.dump({
-            'batch_sizes': inference_metrics.batch_sizes,
-            'batch_count': inference_stats.batch_count,
-            'request_count': inference_stats.request_count,
-            'average_batch_size': inference_stats.average_batch_size,
-            'queue_wait_seconds': inference_stats.queue_wait_seconds,
-            'model_seconds': inference_stats.model_seconds,
-        }, metrics_file, indent=2)
-        metrics_file.write('\n')
-    metrics_temporary.replace(metrics_path)
+            event['inference']['batch_sizes'] = inference_metrics.batch_sizes[
+                previous_stats['batch_count']:stats['batch_count']
+            ]
+            previous_stats = {key: stats[key] for key in previous_stats}
+            print(json.dumps(event), file=protocol, flush=True)
+            del search_result, event
+            completion_index += 1
+            request = next(pending, None)
+            if request is not None:
+                engine.submit(request)
+        stats = vars(engine.inference_stats)
+    print(json.dumps({
+        'type': 'summary',
+        'inference': stats | {'batch_sizes': inference_metrics.batch_sizes},
+    }), file=protocol, flush=True)
+
+
+def main():
+    # Reserve stdout for the protocol, including diagnostics from native libraries.
+    with os.fdopen(os.dup(sys.stdout.fileno()), 'w', encoding='utf-8') as protocol:
+        os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
+        sys.stdout = sys.stderr
+        run_inference(protocol)
 
 
 if __name__ == '__main__':
