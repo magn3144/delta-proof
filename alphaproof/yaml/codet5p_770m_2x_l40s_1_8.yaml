@@ -28,6 +28,7 @@ deltaproof:
   rl:
     num_simulations: 64
     batch_size: 10
+    gradient_accumulation_steps: 1
     num_actors: 192
     num_games_per_actor: 500
     max_concurrent_lean_imports: 32

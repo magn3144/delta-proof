@@ -42,6 +42,7 @@ def validate_config(config: Config) -> None:
     positive = (
         'num_simulations',
         'batch_size',
+        'gradient_accumulation_steps',
         'num_actors',
         'num_games_per_actor',
         'max_concurrent_lean_imports',
@@ -72,11 +73,15 @@ def validate_config(config: Config) -> None:
         raise ValueError(f'dtype must be one of {RL_PRECISIONS}.')
     if config.wandb_mode not in ('online', 'offline', 'disabled'):
         raise ValueError('wandb_mode must be online, offline, or disabled.')
+    effective_batch_size = config.batch_size * config.gradient_accumulation_steps
     if not math.isclose(
-        config.batch_size * config.sft_fraction,
-        round(config.batch_size * config.sft_fraction),
+        effective_batch_size * config.sft_fraction,
+        round(effective_batch_size * config.sft_fraction),
     ):
-        raise ValueError('batch_size * sft_fraction must be a whole number.')
+        raise ValueError(
+            'batch_size * gradient_accumulation_steps * sft_fraction '
+            'must be a whole number.'
+        )
 
 
 def validate_config_paths(config: Config) -> None:

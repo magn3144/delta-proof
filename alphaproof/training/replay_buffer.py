@@ -22,11 +22,13 @@ class ReplayBuffer:
     def __init__(self, config: Config, path: Path):
         """Initialize replay limits and restore existing transitions."""
         self.window_size = config.window_size
-        self.batch_size = config.batch_size
+        self.batch_size = (
+            config.batch_size * config.gradient_accumulation_steps
+        )
         sft_batch_size = self.batch_size * config.sft_fraction
         if not math.isclose(sft_batch_size, round(sft_batch_size)):
             raise ValueError(
-                'batch_size * sft_fraction must be a whole number.'
+                'effective batch size * sft_fraction must be a whole number.'
             )
         self.sft_batch_size = round(sft_batch_size)
         if not 0 < self.sft_batch_size < self.batch_size:

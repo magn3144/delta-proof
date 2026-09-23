@@ -61,6 +61,7 @@ class Config:
 
     num_simulations: int
     batch_size: int
+    gradient_accumulation_steps: int
     num_actors: int
     num_games_per_actor: int
     max_concurrent_lean_imports: int

@@ -131,6 +131,11 @@ class Network(nn.Module):
         self.max_state_length = config.max_state_length
         self.max_action_length = config.max_action_length
         self.mixed_precision = config.dtype == 'mixed'
+        self.gradient_accumulation_steps = (
+            config.gradient_accumulation_steps
+            if isinstance(config, Config)
+            else 1
+        )
         self.device: torch.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu'
         )
@@ -390,13 +395,21 @@ class Network(nn.Module):
         self, batch: list[tuple[torch.Tensor, torch.Tensor, float]]
     ) -> float:
         """Apply one optimizer update from a replay batch."""
+        if len(batch) % self.gradient_accumulation_steps != 0:
+            raise ValueError(
+                'Replay batch size must be divisible by gradient accumulation steps.'
+            )
         self.train()
         self.optimizer.zero_grad(set_to_none=True)
-        loss = self._loss_fn(batch)
-        loss.backward()
+        microbatch_size = len(batch) // self.gradient_accumulation_steps
+        total_loss = 0.0
+        for start in range(0, len(batch), microbatch_size):
+            loss = self._loss_fn(batch[start:start + microbatch_size])
+            (loss / self.gradient_accumulation_steps).backward()
+            total_loss += loss.detach().item()
         self.optimizer.step()
         self._inference_replicas_stale = True
-        return loss.detach().item()
+        return total_loss / self.gradient_accumulation_steps
 
     def evaluate(
         self, batch: list[tuple[torch.Tensor, torch.Tensor, float]]
