@@ -34,7 +34,7 @@ def load_stp_wandb_settings(config_path: Path, run_dir: Path) -> dict[str, Any]:
     return {
         'entity': tracker['entity'],
         'project': tracker['project'],
-        'name': tracker['name'] + '-conjecturer-metrics',
+        'name': tracker['name'] + '-metrics',
         'tags': tracker['tags'],
         'id': run_id,
         'dir': experiment_dir,
@@ -48,9 +48,11 @@ def define_metrics(wandb_run: Any) -> None:
     wandb_run.define_metric('learner/step')
     wandb_run.define_metric('train/*', step_metric='learner/step')
     wandb_run.define_metric('replay_validation/*', step_metric='learner/step')
+    wandb_run.define_metric('replay_validation/loss', step_metric='learner/step')
+    wandb_run.define_metric('replay/*', step_metric='learner/step')
     wandb_run.define_metric('validation/game')
     wandb_run.define_metric('validation/*', step_metric='validation/game')
-    wandb_run.define_metric('inference/*')
+    wandb_run.define_metric('inference/*', step_metric='actor/game')
     wandb_run.define_metric('resources/*')
 
 
@@ -102,6 +104,9 @@ def initialize_stp_wandb(
         ),
     )
     define_metrics(wandb_run)
+    wandb_run.define_metric('round')
+    wandb_run.define_metric('conjecturer/*', step_metric='round')
+    wandb_run.define_metric('inference/batch_sizes', step_metric='round')
     return wandb_run
 
 
@@ -276,7 +281,10 @@ class RunLogger:
 
     def log_inference_batch(self, batch_size: int) -> None:
         """Log the actual size of a completed inference batch."""
-        self.wandb_run.log({'inference/batch_size': batch_size})
+        self.wandb_run.log({
+            'actor/game': self.games_completed,
+            'inference/batch_size': batch_size,
+        })
 
     def log_validation(
         self,
