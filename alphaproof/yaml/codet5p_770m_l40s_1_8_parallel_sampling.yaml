@@ -29,11 +29,11 @@ deltaproof:
     num_simulations: 64
     batch_size: 10
     gradient_accumulation_steps: 1
-    num_actors: 192
-    num_games_per_actor: 250
-    max_concurrent_lean_imports: 32
-    inference_num_gpus: 2
-    inference_batch_size: 60
+    num_actors: 96
+    num_games_per_actor: 500
+    max_concurrent_lean_imports: 24
+    inference_num_gpus: 1
+    inference_batch_size: 30
     inference_batch_timeout: 0.05
     num_sampled_actions: 6
     tactic_timeout: 1.0

@@ -30,7 +30,7 @@ deltaproof:
     batch_size: 10
     gradient_accumulation_steps: 1
     num_actors: 192
-    num_games_per_actor: 500
+    num_games_per_actor: 250
     max_concurrent_lean_imports: 32
     inference_num_gpus: 2
     inference_batch_size: 60
@@ -47,12 +47,12 @@ deltaproof:
     sft_dataset_path: data/dataset/sft_1_8/train.jsonl
     sft_fraction: 0.1
     disprove_rate: 0.0
-    sft_run_dir: data/runs/sft_codet5p_770m_l40s_1_8_01
+    sft_run_dir: data/runs/sft_codet5p_770m_l40s_1_2_01
     max_state_length: 640
     max_action_length: 128
     rollout_max_action_length: 32
-    training_steps: 10000
-    training_iterations: 100
+    training_steps: 5000
+    training_iterations: 10
     checkpoint_interval: 250
     window_size: 250000
     value_weight: 0.01
