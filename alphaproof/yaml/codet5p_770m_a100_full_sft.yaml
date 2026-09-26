@@ -53,7 +53,7 @@ deltaproof:
     rollout_max_action_length: 32
     training_steps: 5000
     training_iterations: 10
-    checkpoint_interval: 250
+    checkpoint_interval: 500
     window_size: 250000
     value_weight: 0.01
     validation_fraction: 0.05

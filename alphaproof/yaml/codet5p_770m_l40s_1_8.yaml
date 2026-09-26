@@ -1,5 +1,5 @@
 deltaproof:
-  # SFT on 1/8 data, followed by native AlphaProof RL on one L40S.
+  # Native AlphaProof RL on one L40S, initialized from the full SFT run.
   sft:
     train_input: data/dataset/sft_1_8/train.jsonl
     validation_input: data/dataset/sft_1_8/validation.jsonl
@@ -47,13 +47,13 @@ deltaproof:
     sft_dataset_path: data/dataset/sft_1_8/train.jsonl
     sft_fraction: 0.1
     disprove_rate: 0.0
-    sft_run_dir: data/runs/sft_codet5p_770m_l40s_1_2_01
+    sft_run_dir: data/runs/sft_codet5p_770m_a100_full_01
     max_state_length: 640
     max_action_length: 128
     rollout_max_action_length: 32
     training_steps: 5000
     training_iterations: 10
-    checkpoint_interval: 250
+    checkpoint_interval: 500
     window_size: 250000
     value_weight: 0.01
     validation_fraction: 0.05
