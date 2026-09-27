@@ -28,7 +28,7 @@ def train_network(
 ) -> int:
     """Run one learner phase and return the latest global step."""
     logger.log_learner_start(start_step, num_steps)
-    validation_batch = replay_buffer.validation_batch(
+    validation_batches = replay_buffer.validation_batches(
         config.validation_batch_size
     )
     step = start_step
@@ -54,8 +54,13 @@ def train_network(
             continue
 
         validation_loss = None
-        if validation_batch and step % config.validation_interval == 0:
-            validation_loss = network.evaluate(validation_batch)
+        if validation_batches and step % config.validation_interval == 0:
+            total_validation_loss = 0.0
+            validation_examples = 0
+            for batch in validation_batches:
+                total_validation_loss += network.evaluate(batch) * len(batch)
+                validation_examples += len(batch)
+            validation_loss = total_validation_loss / validation_examples
         if step % config.log_interval == 0 or validation_loss is not None:
             logger.log_training(
                 step,

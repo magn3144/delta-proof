@@ -126,11 +126,16 @@ class ReplayBuffer:
             raise ValueError('Cannot sample from an empty replay buffer.')
         return self._tokenize_transition(random.choice(self.buffer))
 
-    def validation_batch(self, batch_size: int) -> list[TokenizedTransition]:
-        """Return a fixed held-out replay batch."""
+    def validation_batches(self, batch_size):
+        """Return the held-out replay set split into fixed-size batches."""
         return [
-            self._tokenize_transition(transition)
-            for transition in self.validation_buffer[:batch_size]
+            [
+                self._tokenize_transition(transition)
+                for transition in self.validation_buffer[
+                    start:start + batch_size
+                ]
+            ]
+            for start in range(0, len(self.validation_buffer), batch_size)
         ]
 
     def _save_transition(

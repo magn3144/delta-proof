@@ -51,7 +51,7 @@ deltaproof:
     max_state_length: 640
     max_action_length: 128
     rollout_max_action_length: 32
-    training_steps: 5000
+    training_steps: 2000
     training_iterations: 10
     checkpoint_interval: 500
     window_size: 250000
