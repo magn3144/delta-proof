@@ -1,14 +1,14 @@
 #!/bin/sh
 #BSUB -q gpul40s
-#BSUB -J parallel_sampling_codet5p_770m_l40s_1_8_01
-#BSUB -n 48
+#BSUB -J parallel_sampling_codet5p_770m_l40s_1_8_03
+#BSUB -n 32
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=10GB]"
 #BSUB -M 10GB
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -W 24:00
-#BSUB -o data/runs/parallel_sampling_codet5p_770m_l40s_1_8_01/lsf_%J.out
-#BSUB -e data/runs/parallel_sampling_codet5p_770m_l40s_1_8_01/lsf_%J.err
+#BSUB -o data/runs/parallel_sampling_codet5p_770m_l40s_1_8_03/lsf_%J.out
+#BSUB -e data/runs/parallel_sampling_codet5p_770m_l40s_1_8_03/lsf_%J.err
 
 set -eu
 
@@ -25,5 +25,5 @@ export PYTHONFAULTHANDLER=1
 
 nvidia-smi
 uv run --no-sync python -m alphaproof.training.rl_cli \
-    parallel_sampling_codet5p_770m_l40s_1_8_01 \
+    parallel_sampling_codet5p_770m_l40s_1_8_03 \
     alphaproof/yaml/codet5p_770m_l40s_1_8_parallel_sampling.yaml
