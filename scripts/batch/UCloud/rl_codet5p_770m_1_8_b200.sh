@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-source "/work/MagnusElgaardBennett#3797/master-thesis/env.sh"
+source /work/master-thesis/env.sh
 
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export OMP_NUM_THREADS=1
