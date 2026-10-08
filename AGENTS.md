@@ -27,16 +27,16 @@
 These are the design choices we have made so far.
 They might differ from the pseudocde, which is ok.
 
- - Used LeanTree for interacting with Lean 4.
- - SFT dataset (state, action, proof_depth) was generated in a similar fashion as in NanoProof.
- - SFT code might be similar to NanoProof SFT code.
- - Replay buffer samples uniformly.
- - Computes tactic prior by summing token logprobs. This is used as the prior in PUCT.
- - Value head uses mean pooled encoder output.
- - Value head is currently linear layer.
- - Data for each run is stored like this, so runs can be resumed:
- runs/
-   0/
+- Used LeanTree for interacting with Lean 4.
+- SFT dataset (state, action, proof_depth) was generated in a similar fashion as in NanoProof.
+- SFT code might be similar to NanoProof SFT code.
+- Replay buffer samples uniformly.
+- Computes tactic prior by summing token logprobs. This is used as the prior in PUCT.
+- Value head uses mean pooled encoder output.
+- Value head is currently linear layer.
+- Data for each run is stored like this, so runs can be resumed:
+  runs/
+    0/
     config.json
     matchmaker_stats.json
     results.jsonl
@@ -45,15 +45,16 @@ They might differ from the pseudocde, which is ok.
       step_0001000.pt
       step_0002000.pt
       step_0003000.pt
- - Actors are run in parallel, for a specific amount of rollouts each.
- - Encoder called again every time a node is expanded.
- - The autoformalizer only generates one lean problem per natural language problem.
- - Models used:
+- Actors are run in parallel, for a specific amount of rollouts each.
+- Encoder called again every time a node is expanded.
+- The autoformalizer only generates one lean problem per natural language problem.
+- Models used:
   - Data cleaning: Qwen3.6-27B
   - Autoformalization: Goedel-Prover-V2-32B
   - Prover: Salesforce--codet5p-770m
- - Datasets:
+- Datasets:
   - SFT: 1/4 random subset of NanoProof's SFT dataset
   - RL: 1/3 random subset of NanoProof's RL dataset
- - Only n (usually 32) lean processes are started concurrently to limit congestion
- - yaml files with both SFT and RL hyperparameters are used for reproducibility
+- Only n (usually 32) lean processes are started concurrently to limit congestion
+- yaml files with both SFT and RL hyperparameters are used for reproducibility
+- There are three repos for this project all in the GitHub parent folder: delta-proof with the AlphaProof implementation, alpha-STP with the STP implementation and thesis-latex with the thesis report written in Latex.
