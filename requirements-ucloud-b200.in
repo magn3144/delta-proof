@@ -1,0 +1,17 @@
+# Linux x86_64, Python 3.13. Run from the repository root.
+# Resolve: uv pip compile requirements-ucloud-b200.in --python-version 3.13 --python-platform x86_64-unknown-linux-gnu --torch-backend cu128 --emit-index-url -o requirements-ucloud-b200.lock
+# Use the same Blackwell stack as alpha-STP, independently of pyproject.toml.
+-e ./vendor/leantree
+accelerate>=1.0.0
+bitsandbytes>=0.43.0
+datasets>=4.0.0
+lm-format-enforcer>=0.11.0
+matplotlib>=3.10.0
+pandas>=3.0.0
+pyyaml==6.0.3
+torch==2.8.0+cu128
+transformers==4.55.2
+wandb>=0.28.1
+vllm==0.10.2
+jax[cuda12]==0.5.3
+nvidia-cuda-nvcc-cu12==12.8.93

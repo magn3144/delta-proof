@@ -13,11 +13,8 @@ export PYTHONUNBUFFERED=1
 export PYTHONFAULTHANDLER=1
 
 cd "$DELTA_PROOF"
-source "$DELTA_PROOF/.venv/bin/activate"
+source scripts/batch/UCloud/common_b200.sh
 
-nvidia-smi -L
-python --version
-
-uv run --no-sync python -m alphaproof.training.sft \
+uv run --no-project --active --no-sync "$UV_PROJECT_ENVIRONMENT/bin/python" -m alphaproof.training.sft \
     sft_codet5p_770m_full_b200_01 \
     alphaproof/yaml/UCloud/codet5p_770m_full_b200_sft.yaml
