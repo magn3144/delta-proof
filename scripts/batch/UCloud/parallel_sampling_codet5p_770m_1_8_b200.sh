@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-source /work/master-thesis/env.sh
+ENV_SH="$(find /work -maxdepth 3 -type f -path '*/master-thesis/env.sh' -print -quit)"
+test -n "$ENV_SH"
+source "$ENV_SH"
 
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export OMP_NUM_THREADS=1
