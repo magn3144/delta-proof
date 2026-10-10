@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import torch
 from vllm import LLM, SamplingParams
-from vllm import _custom_ops
+from vllm.model_executor.layers.activation import SiluAndMul
 from transformers import AutoTokenizer, T5ForConditionalGeneration
 
 import bitsandbytes
@@ -30,8 +30,8 @@ for index in range(torch.cuda.device_count()):
         x = torch.ones((32, 32), device='cuda', dtype=torch.bfloat16)
         assert (x @ x).sum().item() == 32768
         # Exercise the compiled vLLM extension without loading model weights.
-        output = torch.empty((32, 16), device='cuda', dtype=torch.bfloat16)
-        _custom_ops.silu_and_mul(output, x)
+        output = SiluAndMul().forward_cuda(x)
+        assert torch.isfinite(output).all().item()
         torch.cuda.synchronize()
     print(f'PyTorch CUDA OK: {torch.cuda.get_device_name(index)}')
 

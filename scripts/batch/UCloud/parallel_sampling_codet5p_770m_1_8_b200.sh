@@ -15,6 +15,6 @@ export PYTHONFAULTHANDLER=1
 cd "$DELTA_PROOF"
 source scripts/batch/UCloud/common_b200.sh
 
-uv run --no-project --active --no-sync "$UV_PROJECT_ENVIRONMENT/bin/python" -m alphaproof.training.rl_cli \
+uv run --no-project --active "$UV_PROJECT_ENVIRONMENT/bin/python" -m alphaproof.training.rl_cli \
     parallel_sampling_codet5p_770m_1_8_b200_01 \
     alphaproof/yaml/UCloud/codet5p_770m_1_8_b200_parallel_sampling.yaml
