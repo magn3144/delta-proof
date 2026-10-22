@@ -78,7 +78,7 @@ class State(typing.NamedTuple):
 
 
 class Environment:
-    """Lean environment."""
+    """Lean environment for one actor."""
 
     def __init__(
         self,
